@@ -65,12 +65,26 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           V="$(tr -d '[:space:]' < VERSION)"
-          if gh release view "v$V" >/dev/null 2>&1; then
+          # releases/tags/... solo encuentra versiones ya publicadas (no borradores)
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/v$V" >/dev/null 2>&1; then
             echo "La versión v$V ya está publicada. Para publicar otra, sube el número en VERSION."
             exit 0
           fi
+          limpiar_borradores() {
+            gh api "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.draft and .tag_name==\"v$V\") | .id" |
+              while read -r id; do echo "Borrando borrador $id"; gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$id"; done
+          }
+          limpiar_borradores  # restos de un intento anterior que falló
           # Notas: el apartado de esta versión en CAMBIOS.md
           awk -v v="## $V" '$0==v{f=1;next} /^## /{f=0} f' CAMBIOS.md > notas.md
           [ -s notas.md ] || echo "Versión $V." > notas.md
-          gh release create "v$V" dist/ComprobadorIMEI-Setup.exe dist/ComprobadorIMEI.exe \
-            --title "Comprobador IMEI $V" --notes-file notas.md
+          for intento in 1 2 3; do
+            if gh release create "v$V" dist/ComprobadorIMEI-Setup.exe dist/ComprobadorIMEI.exe \
+                 --title "Comprobador IMEI $V" --notes-file notas.md; then
+              exit 0
+            fi
+            echo "GitHub ha fallado al publicar (intento $intento). Se reintenta."
+            sleep 15
+            limpiar_borradores
+          done
+          exit 1

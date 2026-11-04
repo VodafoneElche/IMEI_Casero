@@ -453,7 +453,15 @@ static int api(const char *lang, Buf *query, cJSON **out) {
     int status = 0;
     buf_init(&url);
     buf_printf(&url, "https://%s.wikipedia.org/w/api.php?format=json&formatversion=2&%s", lang, query->p);
-    int ok = http_get(url.p, L"application/json", &body, &status);
+    int ok = 0;
+    for (int attempt = 0; attempt < 3; attempt++) { /* reintento si Wikipedia limita la frecuencia o falla */
+        if (attempt) {
+            buf_free(&body);
+            Sleep(700 * attempt);
+        }
+        ok = http_get(url.p, L"application/json", &body, &status);
+        if (ok && status != 429 && status < 500) break;
+    }
     buf_free(&url);
     *out = NULL;
     if (!ok || status != 200) {

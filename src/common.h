@@ -22,7 +22,7 @@
 #define APP_NAME_W L"Comprobador IMEI"
 #define GITHUB_REPO "VodafoneElche/IMEI_Casero"
 #define UPDATE_ASSET "ComprobadorIMEI.exe"
-#define USER_AGENT_W L"ComprobadorIMEI/" APP_VERSION_W L" (uso interno)"
+#define USER_AGENT_W L"ComprobadorIMEI/" APP_VERSION_W L" (+https://github.com/VodafoneElche/IMEI_Casero)"
 #define WIDEN2(x) L##x
 #define WIDEN(x) WIDEN2(x)
 #define APP_VERSION_W WIDEN(APP_VERSION)
