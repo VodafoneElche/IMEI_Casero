@@ -1,0 +1,76 @@
+# Compila, prueba y publica una versión nueva cada vez que cambia el archivo VERSION en main.
+# Si la versión de VERSION ya está publicada, solo compila y prueba (no publica nada).
+name: Compilar y publicar
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  compilar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar MinGW-w64 y NSIS
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends mingw-w64 nsis
+      - name: Compilar la app, las pruebas y el instalador
+        run: make all selftest installer
+      - uses: actions/upload-artifact@v4
+        with:
+          name: comprobador-imei
+          path: |
+            dist/ComprobadorIMEI.exe
+            dist/ComprobadorIMEI-Setup.exe
+            build/selftest.exe
+          if-no-files-found: error
+
+  probar:
+    needs: compilar
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: comprobador-imei
+      - name: Pruebas del núcleo (IMEI, base TAC, ficha)
+        run: .\build\selftest.exe
+      - name: Pruebas con red (Wikipedia y GitHub, no bloquean la publicación)
+        continue-on-error: true
+        run: .\build\selftest.exe --red
+      - name: Arranque de la app
+        shell: pwsh
+        run: |
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          $p = Start-Process -FilePath .\dist\ComprobadorIMEI.exe -PassThru
+          while ($p.MainWindowHandle -eq 0 -and $sw.ElapsedMilliseconds -lt 15000) { Start-Sleep -Milliseconds 20; $p.Refresh() }
+          $ms = $sw.ElapsedMilliseconds
+          if ($p.HasExited) { throw "La app se ha cerrado al arrancar (código $($p.ExitCode))" }
+          Write-Host "Ventana visible en $ms ms"
+          Stop-Process -Id $p.Id -Force
+
+  publicar:
+    needs: probar
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: comprobador-imei
+      - name: Publicar la versión si es nueva
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="$(tr -d '[:space:]' < VERSION)"
+          if gh release view "v$V" >/dev/null 2>&1; then
+            echo "La versión v$V ya está publicada. Para publicar otra, sube el número en VERSION."
+            exit 0
+          fi
+          # Notas: el apartado de esta versión en CAMBIOS.md
+          awk -v v="## $V" '$0==v{f=1;next} /^## /{f=0} f' CAMBIOS.md > notas.md
+          [ -s notas.md ] || echo "Versión $V." > notas.md
+          gh release create "v$V" dist/ComprobadorIMEI-Setup.exe dist/ComprobadorIMEI.exe \
+            --title "Comprobador IMEI $V" --notes-file notas.md

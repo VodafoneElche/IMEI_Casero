@@ -1,0 +1,34 @@
+#include <windows.h>
+#include "resource.h"
+#include "version.h"
+
+IDI_APP ICON "../assets/icon.ico"
+IDR_TACDB RCDATA "../build/tac.bin"
+IDR_FONT_REGULAR RCDATA "../assets/fonts/AtkinsonHyperlegible-Regular.ttf"
+IDR_FONT_BOLD RCDATA "../assets/fonts/AtkinsonHyperlegible-Bold.ttf"
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "app.manifest"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION VER_MAJOR, VER_MINOR, VER_PATCH, 0
+PRODUCTVERSION VER_MAJOR, VER_MINOR, VER_PATCH, 0
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "0C0A04B0"
+    BEGIN
+      VALUE "CompanyName", "Grupo M\363vil Elche"
+      VALUE "FileDescription", "Comprobador IMEI"
+      VALUE "FileVersion", VER_STRING
+      VALUE "InternalName", "ComprobadorIMEI"
+      VALUE "OriginalFilename", "ComprobadorIMEI.exe"
+      VALUE "ProductName", "Comprobador IMEI"
+      VALUE "ProductVersion", VER_STRING
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0C0A, 1200
+  END
+END
